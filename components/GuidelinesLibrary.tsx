@@ -119,6 +119,21 @@ export default function GuidelinesLibrary({
     });
   }, [items, q, category]);
 
+  // Ensure an active item exists and stays in filtered set
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (active) setActive(null);
+      return;
+    }
+    if (!active) {
+      setActive(filtered[0]);
+      return;
+    }
+    if (!filtered.some((i) => i.id === active.id)) {
+      setActive(filtered[0] ?? null);
+    }
+  }, [filtered, active]);
+
   const open = (item: GuidelineItem) => {
     setActive(item);
     setZoom(1);
@@ -256,176 +271,136 @@ export default function GuidelinesLibrary({
         </div>
       </header>
 
-      {/* Grid */}
+      {/* Tabs + Inline Viewer */}
       <main className="mx-auto max-w-6xl px-4 py-6">
         {filtered.length === 0 ? (
           <div className="text-neutral-400 text-sm">
             No results. Try a different search or category.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((item) => {
-              const fav = favorites.includes(item.id);
-              return (
-                <article
-                  key={item.id}
-                  className="group rounded-2xl border border-neutral-800 overflow-hidden bg-neutral-900"
-                >
+          <>
+            <div
+              role="tablist"
+              aria-label="Guidelines"
+              className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1"
+            >
+              {filtered.map((item) => {
+                const isActive = active?.id === item.id;
+                return (
                   <button
+                    key={item.id}
+                    role="tab"
+                    aria-selected={isActive}
                     onClick={() => open(item)}
-                    className="block w-full aspect-[4/3] overflow-hidden"
-                    aria-label={`Open ${item.title}`}
+                    className={cls(
+                      "shrink-0 rounded-full border px-3 py-1.5 text-xs sm:text-sm transition truncate max-w-[16rem]",
+                      isActive
+                        ? "border-emerald-400 text-emerald-300 bg-emerald-500/10"
+                        : "border-neutral-700 text-neutral-300 bg-neutral-900 hover:border-neutral-500"
+                    )}
+                    title={item.title}
+                  >
+                    {item.title}
+                  </button>
+                );
+              })}
+            </div>
+
+            {active && (
+              <div className="mt-4">
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-2xl bg-neutral-900/90 border border-b-0 border-neutral-800 px-3 py-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <strong className="truncate max-w-[40vw] sm:max-w-[24rem]">
+                      {active.title}
+                    </strong>
+                    <span className="text-neutral-400 hidden sm:inline">
+                      · {active.category}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <button onClick={() => nav(-1)} className="rounded-lg border border-neutral-700 px-2 py-1">
+                      ← Prev
+                    </button>
+                    <button onClick={() => nav(1)} className="rounded-lg border border-neutral-700 px-2 py-1">
+                      Next →
+                    </button>
+                    <span className="mx-2 hidden sm:inline text-neutral-500">|</span>
+                    <button
+                      onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
+                      className="rounded-lg border border-neutral-700 px-2 py-1"
+                    >
+                      −
+                    </button>
+                    <span className="min-w-10 text-center">{Math.round(zoom * 100)}%</span>
+                    <button
+                      onClick={() => setZoom((z) => Math.min(8, z + 0.25))}
+                      className="rounded-lg border border-neutral-700 px-2 py-1"
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={() => {
+                        setZoom(1);
+                        setPanning({ x: 0, y: 0 });
+                        setRotation(0);
+                      }}
+                      className="rounded-lg border border-neutral-700 px-2 py-1"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => setRotation((r) => (r + 90) % 360)}
+                      className="rounded-lg border border-neutral-700 px-2 py-1"
+                    >
+                      Rotate
+                    </button>
+                    <button
+                      onClick={() => toggleFav(active.id)}
+                      className="rounded-lg border border-neutral-700 px-2 py-1"
+                    >
+                      {favorites.includes(active.id) ? "★ Unfav" : "☆ Fav"}
+                    </button>
+                    <button onClick={downloadActive} className="rounded-lg border border-neutral-700 px-2 py-1">
+                      Download
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stage */}
+                <div
+                  className="relative h-[70vh] overflow-hidden rounded-b-2xl bg-neutral-950 border border-neutral-800"
+                  onWheel={onWheel}
+                  onMouseDown={onMouseDown}
+                  onMouseMove={onMouseMove}
+                  onMouseUp={onMouseUp}
+                  onMouseLeave={onMouseUp}
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
+                >
+                  <div
+                    className="absolute left-1/2 top-1/2"
+                    style={{
+                      transform: `translate(-50%, -50%) translate(${panning.x}px, ${panning.y}px) scale(${zoom}) rotate(${rotation}deg)`,
+                      transformOrigin: "center center",
+                    }}
                   >
                     <img
-                      src={item.src}
-                      alt={item.title}
-                      className="h-full w-full object-cover transition scale-[1.01] group-hover:scale-105"
-                      loading="lazy"
+                      src={active.src}
+                      alt={active.title}
+                      className="max-h-[80vh] max-w-[90vw] select-none pointer-events-none"
+                      draggable={false}
                     />
-                  </button>
-                  <div className="p-3 flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="text-sm font-medium leading-tight">
-                        {item.title}
-                      </h3>
-                      <p className="text-xs text-neutral-400 mt-0.5">
-                        {item.category}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {item.note && (
-                        <span className="text-[10px] text-neutral-400 hidden sm:inline">
-                          {item.note}
-                        </span>
-                      )}
-                      <button
-                        onClick={() => toggleFav(item.id)}
-                        className={cls(
-                          "rounded-lg border px-2 py-1 text-xs transition",
-                          fav
-                            ? "border-emerald-400 text-emerald-300"
-                            : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
-                        )}
-                        aria-pressed={fav}
-                        aria-label={fav ? "Remove from favorites" : "Add to favorites"}
-                      >
-                        {fav ? "★ Fav" : "☆ Fav"}
-                      </button>
-                    </div>
                   </div>
-                </article>
-              );
-            })}
-          </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
 
-      {/* Modal */}
-      {active && (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <button
-            className="absolute inset-0 cursor-zoom-out"
-            onClick={() => setActive(null)}
-            aria-label="Close overlay"
-          />
-
-          <div className="relative z-10 w-full max-w-6xl">
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-2xl bg-neutral-900/90 border border-b-0 border-neutral-800 px-3 py-2">
-              <div className="flex items-center gap-2 text-sm">
-                <strong className="truncate max-w-[40vw] sm:max-w-[24rem]">
-                  {active.title}
-                </strong>
-                <span className="text-neutral-400 hidden sm:inline">
-                  · {active.category}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <button onClick={() => nav(-1)} className="rounded-lg border border-neutral-700 px-2 py-1">
-                  ← Prev
-                </button>
-                <button onClick={() => nav(1)} className="rounded-lg border border-neutral-700 px-2 py-1">
-                  Next →
-                </button>
-                <span className="mx-2 hidden sm:inline text-neutral-500">|</span>
-                <button
-                  onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
-                  className="rounded-lg border border-neutral-700 px-2 py-1"
-                >
-                  −
-                </button>
-                <span className="min-w-10 text-center">{Math.round(zoom * 100)}%</span>
-                <button
-                  onClick={() => setZoom((z) => Math.min(8, z + 0.25))}
-                  className="rounded-lg border border-neutral-700 px-2 py-1"
-                >
-                  +
-                </button>
-                <button
-                  onClick={() => {
-                    setZoom(1);
-                    setPanning({ x: 0, y: 0 });
-                    setRotation(0);
-                  }}
-                  className="rounded-lg border border-neutral-700 px-2 py-1"
-                >
-                  Reset
-                </button>
-                <button
-                  onClick={() => setRotation((r) => (r + 90) % 360)}
-                  className="rounded-lg border border-neutral-700 px-2 py-1"
-                >
-                  Rotate
-                </button>
-                <button
-                  onClick={() => toggleFav(active.id)}
-                  className="rounded-lg border border-neutral-700 px-2 py-1"
-                >
-                  {favorites.includes(active.id) ? "★ Unfav" : "☆ Fav"}
-                </button>
-                <button onClick={downloadActive} className="rounded-lg border border-neutral-700 px-2 py-1">
-                  Download
-                </button>
-                <button onClick={() => setActive(null)} className="rounded-lg border border-neutral-700 px-2 py-1">
-                  Close ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Stage */}
-            <div
-              className="relative h-[70vh] overflow-hidden rounded-b-2xl bg-neutral-950 border border-neutral-800"
-              onWheel={onWheel}
-              onMouseDown={onMouseDown}
-              onMouseMove={onMouseMove}
-              onMouseUp={onMouseUp}
-              onMouseLeave={onMouseUp}
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-            >
-              <div
-                className="absolute left-1/2 top-1/2"
-                style={{
-                  transform: `translate(-50%, -50%) translate(${panning.x}px, ${panning.y}px) scale(${zoom}) rotate(${rotation}deg)`,
-                  transformOrigin: "center center",
-                }}
-              >
-                <img
-                  src={active.src}
-                  alt={active.title}
-                  className="max-h-[80vh] max-w-[90vw] select-none pointer-events-none"
-                  draggable={false}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal removed in favor of inline tab viewer */}
 
       {/* Footer */}
       <footer className="mx-auto max-w-6xl px-4 py-10 text-xs text-neutral-500">
