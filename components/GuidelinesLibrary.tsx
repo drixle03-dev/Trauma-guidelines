@@ -282,7 +282,7 @@ export default function GuidelinesLibrary({
             <div
               role="tablist"
               aria-label="Guidelines"
-              className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1"
+              className="flex gap-2 overflow-x-auto -mx-1 px-1 border-b border-neutral-800"
             >
               {filtered.map((item) => {
                 const isActive = active?.id === item.id;
@@ -293,10 +293,10 @@ export default function GuidelinesLibrary({
                     aria-selected={isActive}
                     onClick={() => open(item)}
                     className={cls(
-                      "shrink-0 rounded-full border px-3 py-1.5 text-xs sm:text-sm transition truncate max-w-[16rem]",
+                      "shrink-0 -mb-px truncate max-w-[16rem] px-3 sm:px-4 py-2 text-xs sm:text-sm border rounded-t-2xl transition-colors",
                       isActive
-                        ? "border-emerald-400 text-emerald-300 bg-emerald-500/10"
-                        : "border-neutral-700 text-neutral-300 bg-neutral-900 hover:border-neutral-500"
+                        ? "bg-neutral-900 text-white border-neutral-700 border-b-transparent"
+                        : "bg-neutral-800 text-neutral-300 border-neutral-700 hover:bg-neutral-700"
                     )}
                     title={item.title}
                   >
