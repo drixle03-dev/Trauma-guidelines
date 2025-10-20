@@ -100,6 +100,9 @@ export default function GuidelinesLibrary({
 }: {
   items?: GuidelineItem[];
 }) {
+  // Defer client-only state until after mount to avoid hydration mismatches
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [q, setQ] = useState("");
   const [category, setCategory] = useLocalStorage<string>("gl-category", "All");
   const [favorites, setFavorites] = useLocalStorage<string[]>("gl-favs", []);
@@ -110,6 +113,20 @@ export default function GuidelinesLibrary({
   const [isDragging, setDragging] = useState(false);
   const dragOrigin = useRef<{ x: number; y: number } | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
+
+  if (!mounted) {
+    // Render a minimal, deterministic shell that matches on server and client
+    return (
+      <div className="min-h-screen bg-neutral-950 text-neutral-100">
+        <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-neutral-950/70 border-b border-neutral-800">
+          <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400" />
+            <h1 className="text-lg font-semibold leading-tight">Trauma Guidelines</h1>
+          </div>
+        </header>
+      </div>
+    );
+  }
 
   const categories = useMemo(
     () => ["All", ...Array.from(new Set(items.map((i) => i.category)))],
