@@ -69,19 +69,28 @@ const cls = (...parts: (string | false | null | undefined)[]) =>
   parts.filter(Boolean).join(" ");
 
 const useLocalStorage = <T,>(key: string, initial: T) => {
-  const [value, setValue] = useState<T>(() => {
+  // Important: start with the same value on server and the first client render
+  const [value, setValue] = useState<T>(initial);
+  const hasMountedRef = useRef(false);
+
+  // After mount, read from localStorage and update state
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(key);
-      return raw ? (JSON.parse(raw) as T) : initial;
-    } catch {
-      return initial;
-    }
-  });
+      if (raw != null) setValue(JSON.parse(raw) as T);
+    } catch {}
+    hasMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  // Persist changes, but only after we've had a chance to read existing storage
   useEffect(() => {
+    if (!hasMountedRef.current) return;
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch {}
   }, [key, value]);
+
   return [value, setValue] as const;
 };
 
